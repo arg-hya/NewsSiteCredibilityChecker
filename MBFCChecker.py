@@ -3,13 +3,16 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import tkinter as tk
 from tkinter import simpledialog
+from functools import lru_cache
+import time
 
 MBFC_RATING = "MBFC Credibility Rating:"
 FACTUAL_RATING = "Factual Reporting:"
+UNDEFINED = -1
 
-MBFC_RATING_VALUES = {"HIGH CREDIBILITY" : 3,
-                      "MEDIUM CREDIBILITY" : 2,
-                      "LOW CREDIBILITY" : 1}
+MBFC_RATING_VALUES = {"HIGH CREDIBILITY" : 2,
+                      "MEDIUM CREDIBILITY" : 1,
+                      "LOW CREDIBILITY" : 0}
 
 FACTUAL_RATING_VALUES = {"VERY HIGH": 4,
                           "HIGH": 3,
@@ -84,42 +87,84 @@ def getMBFCUrl(domain):
             return a_entry['href']
 
 def isCredible(dict_ratings):
+    mbfc_point = UNDEFINED
+    factual_point = UNDEFINED
     if MBFC_RATING in dict_ratings:
         mbfc_point = MBFC_RATING_VALUES[dict_ratings[MBFC_RATING].upper()]
     if FACTUAL_RATING in dict_ratings:
         factual_point = FACTUAL_RATING_VALUES[dict_ratings[FACTUAL_RATING].upper()]
     print("MBFC_RATING points : ", mbfc_point)
     print("FACTUAL_RATING points : ", factual_point)
-    if mbfc_point > MBFC_RATING_VALUES["LOW CREDIBILITY"]:
-        return True
-    if factual_point > FACTUAL_RATING_VALUES["MIXED"]:
-        return True
-    return False
+    if mbfc_point != UNDEFINED: #> MBFC_RATING_VALUES["LOW CREDIBILITY"]:
+        return mbfc_point
+    if factual_point != UNDEFINED: #> FACTUAL_RATING_VALUES["MIXED"]:
+        if factual_point == FACTUAL_RATING_VALUES["LOW"] or \
+            factual_point == FACTUAL_RATING_VALUES["MIXED"] :
+            return 0
+        if factual_point == FACTUAL_RATING_VALUES["MOSTLY FACTUAL"] :
+            return 1
+        if factual_point == FACTUAL_RATING_VALUES["HIGH"] or \
+            factual_point == FACTUAL_RATING_VALUES["VERY HIGH"] :
+            return 2
+    return UNDEFINED
 
-def getCredibility(base_url):
-    print(base_url)
+@lru_cache(maxsize=128, typed=False)
+def execute(domain):
+    mbfcUrl = getMBFCUrl(domain)
+    print("MBFC URL : ", mbfcUrl)
+    dict_ratings = getRatings(mbfcUrl)
+    print("Dict Ratings : ", dict_ratings)
+    site_label = isCredible(dict_ratings)
+    print("Rating : ", site_label)
+    return site_label
+
+def getCredibility(base_url, displayPrompt = False):
+    print("Base URL : ", base_url)
     #base_url = "https://www.foxnews.com/politics/pennsylvania-senate-fetterman-camp-sues-undated-absentee-ballots"
     #base_url = "https://www.cnn.com/2022/11/07/world/titanic-mystery-deep-sea-coral-reef-scn/index.html"
     domain = urlparse(base_url).netloc
-    print(domain)
-    mbfcUrl = getMBFCUrl(domain)
-    print(mbfcUrl)
-    dict_ratings = getRatings(mbfcUrl)
-    print(dict_ratings)
-    binary_label = isCredible(dict_ratings)
+    print("Domain : ",domain)
+    server = domain.split('.')[-1]
+    print("Server : ", server)
+    if server == "onion":
+        tk.messagebox.showinfo("Result \t\t\t", "Dark Net Site")
+        return "DARK_WEB"
+    # mbfcUrl = getMBFCUrl(domain)
+    # print("MBFC URL : ", mbfcUrl)
+    # dict_ratings = getRatings(mbfcUrl)
+    # print("Dict Ratings : ", dict_ratings)
+    # site_label = isCredible(dict_ratings)
+    # print("Rating : ", site_label)
 
-    if binary_label == True:
-        tk.messagebox.showinfo("Result \t\t\t", "CREDIBLE!!! Source")
-    else:
-        tk.messagebox.showinfo("Result \t\t\t", "NOT CREDIBLE!!! Source")
+    site_label = execute(domain)
+
+    if site_label == UNDEFINED:
+        tk.messagebox.showinfo("Result \t\t\t", "Unable to classify source")
+        return "UNKNOWN"
+    elif site_label == 0:
+        tk.messagebox.showinfo("Result \t\t\t", "LOW CREDIBILITY!!! Source")
+        return "LOW_CREDIBILITY"
+    elif site_label == 1:
+        tk.messagebox.showinfo("Result \t\t\t", "MEDIUM CREDIBILITY!!! Source")
+        return "MEDIUM_CREDIBILITY"
+    elif site_label == 2:
+        tk.messagebox.showinfo("Result \t\t\t", "HIGH CREDIBILITY!!! Source")
+        return "HIGH_CREDIBILITY"
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()
 
+    #default_url = "https://www.foxnews.com/politics/pennsylvania-senate-fetterman-camp-sues-undated-absentee-ballots"
     default_url = "https://www.foxnews.com/politics/pennsylvania-senate-fetterman-camp-sues-undated-absentee-ballots"
-    base_url = simpledialog.askstring("News site checker", "Enter News Article here \t\t\t\t\t\t", initialvalue=default_url)
-    getCredibility(base_url)
+    #http://6nhmgdpnyoljh5uzr5kwlatx2u3diou4ldeommfxjz3wkhalzgjqxzqd.onion/
+
+    while(True) :
+        start_time = time.time()
+        base_url = simpledialog.askstring("News site checker", "Enter News Article here \t\t\t\t\t\t", initialvalue=default_url)
+        getCredibility(base_url, displayPrompt = True)
+        print("--- %s seconds ---" % (time.time() - start_time))
+
 
 
 
