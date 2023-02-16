@@ -16,4 +16,15 @@ MBFC Credibility Rating
 ## Basic UI
 Done using tikner
 
+## Class usage
+Basic usage is as follows,
+
+```python
+cred_checker = NewsSiteCredibility()
+default_url = "Site url to check" //add your url here
+cred_checker.getSiteCredibility(default_url)
+```
+
+Use **enable_UI** to enable display prompt. Additionally, **cache** is also enabled by default for faster processing. Specifically, Least Recently Used (LRU) cache is used with 128 maxsize.
+
 
