@@ -1,5 +1,5 @@
 # NewsSiteCredibilityChecker
-News Site Credibility Checker using MBFC rating
+News Site Credibility Checker using MBFC rating. 
 
 Finds the credibility of a news site by crawling https://www.mediabiasfactcheck.com and using the metrics.
 
@@ -26,7 +26,7 @@ cred_checker = NewsSiteCredibility()
 default_url = "Site url to check" //add your url here
 score = cred_checker.getSiteCredibility(default_url)
 ```
-
+Parses the entire url automatically, thus no need preprocess the url beforehand.
 Use **enable_UI** to enable display prompt or **verbose** to display internal results. Additionally, **cache** is also enabled by default for faster processing. Specifically, Least Recently Used (LRU) cache is used with 128 maxsize.
 
 The mapping of returned score to readable text is as follows,
