@@ -20,6 +20,18 @@ FACTUAL_RATING_VALUES = {"VERY HIGH": 4,
                           "MIXED": 1,
                           "LOW": 0 }
 
+RETURN_SCORES = {"DARK_WEB": 4,
+                          "HIGH_CREDIBILITY": 3,
+                          "MEDIUM_CREDIBILITY": 2,
+                          "LOW_CREDIBILITY": 1,
+                          "UNKNOWN": 0 }
+
+verbose = False
+
+def resolveScore(result):
+    if result in RETURN_SCORES.keys():
+        return RETURN_SCORES[result]
+
 def getRatings(mbfcUrl):
     page = requests.get(mbfcUrl)
     soup = BeautifulSoup(page.content, "html5lib")
@@ -81,7 +93,7 @@ def getMBFCUrl(domain):
     for a_entry in a_entries:
         span = a_entry.find("span")
         if 'Read More' in span.text:
-            print(span.text)
+            #print(span.text)
             href = a_entry.find("href")
             #print(a_entry['href'])
             return a_entry['href']
@@ -93,8 +105,10 @@ def isCredible(dict_ratings):
         mbfc_point = MBFC_RATING_VALUES[dict_ratings[MBFC_RATING].upper()]
     if FACTUAL_RATING in dict_ratings:
         factual_point = FACTUAL_RATING_VALUES[dict_ratings[FACTUAL_RATING].upper()]
-    print("MBFC_RATING points : ", mbfc_point)
-    print("FACTUAL_RATING points : ", factual_point)
+
+    if verbose == True:
+        print("MBFC_RATING points : ", mbfc_point)
+        print("FACTUAL_RATING points : ", factual_point)
     if mbfc_point != UNDEFINED: #> MBFC_RATING_VALUES["LOW CREDIBILITY"]:
         return mbfc_point
     if factual_point != UNDEFINED: #> FACTUAL_RATING_VALUES["MIXED"]:
@@ -111,61 +125,46 @@ def isCredible(dict_ratings):
 @lru_cache(maxsize=128, typed=False)
 def execute(domain):
     mbfcUrl = getMBFCUrl(domain)
-    print("MBFC URL : ", mbfcUrl)
+    if verbose == True:
+        print("MBFC URL : ", mbfcUrl)
     dict_ratings = getRatings(mbfcUrl)
-    print("Dict Ratings : ", dict_ratings)
+    if verbose == True:
+        print("Dict Ratings : ", dict_ratings)
     site_label = isCredible(dict_ratings)
-    print("Rating : ", site_label)
+    if verbose == True:
+        print("Rating : ", site_label)
     return site_label
 
 def getCredibility(base_url, displayPrompt = False):
-    print("Base URL : ", base_url)
-    #base_url = "https://www.foxnews.com/politics/pennsylvania-senate-fetterman-camp-sues-undated-absentee-ballots"
-    #base_url = "https://www.cnn.com/2022/11/07/world/titanic-mystery-deep-sea-coral-reef-scn/index.html"
+    if verbose == True:
+        print("Base URL : ", base_url)
+
     domain = urlparse(base_url).netloc
-    print("Domain : ",domain)
+    if verbose == True:
+        print("Domain : ",domain)
     server = domain.split('.')[-1]
-    print("Server : ", server)
+    if verbose == True:
+        print("Server : ", server)
     if server == "onion":
-        tk.messagebox.showinfo("Result \t\t\t", "Dark Net Site")
+        if displayPrompt == True :
+            tk.messagebox.showinfo("Result \t\t\t", "Dark Net Site")
         return "DARK_WEB"
-    # mbfcUrl = getMBFCUrl(domain)
-    # print("MBFC URL : ", mbfcUrl)
-    # dict_ratings = getRatings(mbfcUrl)
-    # print("Dict Ratings : ", dict_ratings)
-    # site_label = isCredible(dict_ratings)
-    # print("Rating : ", site_label)
 
     site_label = execute(domain)
 
     if site_label == UNDEFINED:
-        tk.messagebox.showinfo("Result \t\t\t", "Unable to classify source")
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "Unable to classify source")
         return "UNKNOWN"
     elif site_label == 0:
-        tk.messagebox.showinfo("Result \t\t\t", "LOW CREDIBILITY!!! Source")
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "LOW CREDIBILITY!!! Source")
         return "LOW_CREDIBILITY"
     elif site_label == 1:
-        tk.messagebox.showinfo("Result \t\t\t", "MEDIUM CREDIBILITY!!! Source")
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "MEDIUM CREDIBILITY!!! Source")
         return "MEDIUM_CREDIBILITY"
     elif site_label == 2:
-        tk.messagebox.showinfo("Result \t\t\t", "HIGH CREDIBILITY!!! Source")
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "HIGH CREDIBILITY!!! Source")
         return "HIGH_CREDIBILITY"
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.withdraw()
-
-    #default_url = "https://www.foxnews.com/politics/pennsylvania-senate-fetterman-camp-sues-undated-absentee-ballots"
-    default_url = "https://www.foxnews.com/politics/pennsylvania-senate-fetterman-camp-sues-undated-absentee-ballots"
-    #http://6nhmgdpnyoljh5uzr5kwlatx2u3diou4ldeommfxjz3wkhalzgjqxzqd.onion/
-
-    while(True) :
-        start_time = time.time()
-        base_url = simpledialog.askstring("News site checker", "Enter News Article here \t\t\t\t\t\t", initialvalue=default_url)
-        getCredibility(base_url, displayPrompt = True)
-        print("--- %s seconds ---" % (time.time() - start_time))
-
-
-
-
-
