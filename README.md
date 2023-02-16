@@ -20,6 +20,8 @@ Done using tikner
 Basic usage is as follows,
 
 ```python
+from NewsSiteCred import NewsSiteCredibility
+
 cred_checker = NewsSiteCredibility()
 default_url = "Site url to check" //add your url here
 cred_checker.getSiteCredibility(default_url)
