@@ -26,22 +26,26 @@ def test_Class():
 
     start_time = time.time()
     default_url = "https://www.foxnews.com/politics/pennsylvania-senate-fetterman-camp-sues-undated-absentee-ballots"
-    obj.getSiteCredibility(default_url)
+    score = obj.getSiteCredibility(default_url)
+    print(score)
     print("--- %s seconds ---" % (time.time() - start_time))
 
     start_time = time.time()
     default_url = "https://www.cnn.com/2022/11/07/world/titanic-mystery-deep-sea-coral-reef-scn/index.html"
-    obj.getSiteCredibility(default_url)
+    score = obj.getSiteCredibility(default_url)
+    print(score)
     print("--- %s seconds ---" % (time.time() - start_time))
 
     start_time = time.time()
     default_url = "https://www.foxnews.com/reef/pennsylvania-senate-fetterman"
-    obj.getSiteCredibility(default_url)
+    score = obj.getSiteCredibility(default_url)
+    print(score)
     print("--- %s seconds ---" % (time.time() - start_time))
 
     start_time = time.time()
     default_url = "http://6nhmgdpnyoljh5uzr5kwlatx2u3diou4ldeommfxjz3wkhalzgjqxzqd.onion/"
-    obj.getSiteCredibility(default_url)
+    score = obj.getSiteCredibility(default_url)
+    print(score)
     print("--- %s seconds ---" % (time.time() - start_time))
 
 if __name__ == "__main__":
