@@ -1,3 +1,5 @@
+import urllib
+
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
@@ -5,9 +7,11 @@ import tkinter as tk
 from tkinter import simpledialog
 from functools import lru_cache
 import time
+import re
 
 MBFC_RATING = "MBFC Credibility Rating:"
 FACTUAL_RATING = "Factual Reporting:"
+SOURCE = "Source:"
 UNDEFINED = -1
 
 MBFC_RATING_VALUES = {"HIGH CREDIBILITY" : 2,
@@ -28,11 +32,25 @@ RETURN_SCORES = {"DARK_WEB": 4,
 
 verbose = False
 
+def compareURLs(url_a, url_b):
+    if verbose == True:
+        print("compareURLs ", url_a, " ", url_b)
+    domain_a = re.split('//|\.', url_a)
+    domain_b = re.split('//|\.', url_b)
+    ##Note : Comparing urls using negative index. Thus, comparing from the back as
+    ##the front of the url might have discrepancies (https://www. vs www. vs http://). However, the
+    ##ending i.e the server is disambiguous (.org or .org/)
+    #print("Domain : ", domain_a[-2], " : ",domain_b[-2])
+    if domain_a[-2] != domain_b[-2]:
+        return False
+    return True
+
+
 def resolveScore(result):
     if result in RETURN_SCORES.keys():
         return RETURN_SCORES[result]
 
-def getRatings(mbfcUrl):
+def getRatings(mbfcUrl, source_ori):
     page = requests.get(mbfcUrl)
     soup = BeautifulSoup(page.content, "html5lib")
     dict_ratings = {}
@@ -40,16 +58,29 @@ def getRatings(mbfcUrl):
     # p_entry = div_entry.p[0]
     for div_entry in div_entries:
         row = div_entry.text
-        #print(div_entry.text)
+        # if verbose == True:
+        #     print(div_entry.text)
+        if SOURCE in row:
+            source = row.split(SOURCE)[1].split("\n")[0]
+            if verbose == True:
+                print("Source :", source)
+            if compareURLs(source, source_ori) == False:
+                return dict_ratings
+
         if MBFC_RATING in row:
             rating = row.split(MBFC_RATING)[1].split("\n")[0]
+            rating = re.sub('[^0-9a-zA-Z]+', ' ', rating)
+            if verbose == True:
+                print("rating :", rating)
             dict_ratings[MBFC_RATING] = rating.strip()
-            # print(rating.strip())
+
         if FACTUAL_RATING in row:
             rating = row.split(FACTUAL_RATING)[1].split("\n")[0]
+            rating = re.sub('[^0-9a-zA-Z]+', ' ', rating)
+            if verbose == True:
+                print("rating :", rating)
             dict_ratings[FACTUAL_RATING] = rating.strip()
-            # print(rating.strip())
-            # print(len(dict_ratings))
+
         if len(dict_ratings) == 2:
             return dict_ratings
 
@@ -127,7 +158,7 @@ def execute(domain):
     mbfcUrl = getMBFCUrl(domain)
     if verbose == True:
         print("MBFC URL : ", mbfcUrl)
-    dict_ratings = getRatings(mbfcUrl)
+    dict_ratings = getRatings(mbfcUrl, domain)
     if verbose == True:
         print("Dict Ratings : ", dict_ratings)
     site_label = isCredible(dict_ratings)
