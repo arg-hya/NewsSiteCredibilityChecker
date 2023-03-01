@@ -4,7 +4,8 @@ News Site Credibility Checker using MBFC rating.
 Finds the credibility of a news site by crawling https://www.mediabiasfactcheck.com and using the metrics.
 
 Module 1 : Performs a search query on https://www.mediabiasfactcheck.com/ and retirves the correct link.
-Module 2 : Crawels the contents of the link and retirves the relevant metrics and classifies the site under consideration.
+
+Module 2 : Crawels the contents of the link and retirves the relevant metrics and classifies the site under consideration. 
 
 ## Key Metrics returned
 Bias Rating
@@ -38,4 +39,6 @@ RETURN_SCORES = {"DARK_WEB": 4,
                  "UNKNOWN": 0 }
 ```
 
-
+Note: the content if mediabiasfactcheck.com has noise and discrepancies. Thus, the following prepossing is done
+* The metric scores have noise, thus regex is used to remove the inconsistency.
+* Sometimes for a news site the corresponding mediabiasfactcheck webpage is inaccurate. To resolve this, we compare the URL provided and the source URL listed in the mediabiasfactcheck webpage.
