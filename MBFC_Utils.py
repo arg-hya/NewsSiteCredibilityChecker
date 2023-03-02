@@ -117,6 +117,7 @@ def getRatings1(mbfcUrl):
 
 def getMBFCUrl(domain):
     query_URL = "https://mediabiasfactcheck.com/?s=" + domain
+    #print("getMBFCUrl : ",query_URL)
     page = requests.get(query_URL)
     soup = BeautifulSoup(page.content, "html5lib")
 
@@ -153,11 +154,8 @@ def isCredible(dict_ratings):
             return 2
     return UNDEFINED
 
-@lru_cache(maxsize=128, typed=False)
-def execute(domain):
-    mbfcUrl = getMBFCUrl(domain)
-    if verbose == True:
-        print("MBFC URL : ", mbfcUrl)
+
+def getSiteLabel(mbfcUrl, domain):
     dict_ratings = getRatings(mbfcUrl, domain)
     if verbose == True:
         print("Dict Ratings : ", dict_ratings)
@@ -165,6 +163,53 @@ def execute(domain):
     if verbose == True:
         print("Rating : ", site_label)
     return site_label
+
+@lru_cache(maxsize=128, typed=False)
+def execute(domain):
+    mbfcUrl = getMBFCUrl(domain)
+    if verbose == True:
+        print("MBFC URL : ", mbfcUrl)
+    return getSiteLabel(mbfcUrl, domain)
+
+def returnResult(site_label, displayPrompt = False):
+    if site_label == UNDEFINED:
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "Unable to classify source")
+        return "UNKNOWN"
+    elif site_label == 0:
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "LOW CREDIBILITY!!! Source")
+        return "LOW_CREDIBILITY"
+    elif site_label == 1:
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "MEDIUM CREDIBILITY!!! Source")
+        return "MEDIUM_CREDIBILITY"
+    elif site_label == 2:
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "HIGH CREDIBILITY!!! Source")
+        return "HIGH_CREDIBILITY"
+
+def reExecuteUsingTitle(domain):
+    domain = "https://" + domain
+    if verbose:
+        print("Re-executing for : ", domain)
+    # making requests instance
+    reqs = requests.get(domain)
+    # using the BeautifulSoup module
+    soup = BeautifulSoup(reqs.text, 'html.parser')
+    # displaying the title
+    for title in soup.find_all('title'):
+        title_text = title.get_text()
+        res = re.split('\(|\||\.|\:|\-', title_text)[0]
+        res = res.strip() #Contains the stripped title
+        res = res.replace(" ", "+")
+        if verbose:
+            print("Title of the website is : ", res)
+        #Get the mbfc webpage by searching the title
+        mbfc_url = getMBFCUrl(res)
+        if verbose:
+            print("mbfc_url : ", mbfc_url)
+        return getSiteLabel(mbfc_url, domain)
 
 def getCredibility(base_url, displayPrompt = False):
     if verbose == True:
@@ -182,20 +227,12 @@ def getCredibility(base_url, displayPrompt = False):
         return "DARK_WEB"
 
     site_label = execute(domain)
-
+    ##Sometimes MBFC search fails and points to misleading news source (like who.int).
+    ##This is where, the source comparison fails. Thus, as a fail safe we first retrive the webpage title
+    ##from the original domain then use the title to search MBFC to get the correct MBFC webpage.
     if site_label == UNDEFINED:
-        if displayPrompt == True:
-            tk.messagebox.showinfo("Result \t\t\t", "Unable to classify source")
-        return "UNKNOWN"
-    elif site_label == 0:
-        if displayPrompt == True:
-            tk.messagebox.showinfo("Result \t\t\t", "LOW CREDIBILITY!!! Source")
-        return "LOW_CREDIBILITY"
-    elif site_label == 1:
-        if displayPrompt == True:
-            tk.messagebox.showinfo("Result \t\t\t", "MEDIUM CREDIBILITY!!! Source")
-        return "MEDIUM_CREDIBILITY"
-    elif site_label == 2:
-        if displayPrompt == True:
-            tk.messagebox.showinfo("Result \t\t\t", "HIGH CREDIBILITY!!! Source")
-        return "HIGH_CREDIBILITY"
+        site_label = reExecuteUsingTitle(domain)
+
+    return returnResult(site_label, displayPrompt)
+
+

@@ -52,7 +52,7 @@ def debug():
 
     default_url = "https://www.who.int/news-room/q-a-detail/q-a-coronaviruses"
     res = getCredibility(default_url, displayPrompt=False)
-    print(res)
+    print("Result : ", res)
 
     default_url = "https://www.brookings.edu/blog/fixgov/2020/03/25/trump-or-governors-whos-the-boss/"
     res = getCredibility(default_url, displayPrompt=False)
