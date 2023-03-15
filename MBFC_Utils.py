@@ -9,10 +9,13 @@ from functools import lru_cache
 import time
 import re
 
+from CustomClassifier import runCustomCredilibityClassifier
+
 MBFC_RATING = "MBFC Credibility Rating:"
 FACTUAL_RATING = "Factual Reporting:"
 SOURCE = "Source:"
 UNDEFINED = -1
+DARK_WEB = -2
 
 MBFC_RATING_VALUES = {"HIGH CREDIBILITY" : 2,
                       "MEDIUM CREDIBILITY" : 1,
@@ -31,6 +34,7 @@ RETURN_SCORES = {"DARK_WEB": 4,
                           "UNKNOWN": 0 }
 
 verbose = False
+TIMEOUT = 5
 
 def compareURLs(url_a, url_b):
     if verbose == True:
@@ -51,7 +55,7 @@ def resolveScore(result):
         return RETURN_SCORES[result]
 
 def getRatings(mbfcUrl, source_ori):
-    page = requests.get(mbfcUrl)
+    page = requests.get(mbfcUrl, timeout=TIMEOUT)
     soup = BeautifulSoup(page.content, "html5lib")
     dict_ratings = {}
     div_entries = soup.find_all('div', class_="entry-content")
@@ -87,7 +91,7 @@ def getRatings(mbfcUrl, source_ori):
     return dict_ratings
 
 def getRatings1(mbfcUrl):
-    page = requests.get(mbfcUrl)
+    page = requests.get(mbfcUrl, timeout=TIMEOUT)
     soup = BeautifulSoup(page.content, "html5lib")
     dict_ratings = {}
     div_entries = soup.find_all('div', class_="entry-content")
@@ -118,7 +122,7 @@ def getRatings1(mbfcUrl):
 def getMBFCUrl(domain):
     query_URL = "https://mediabiasfactcheck.com/?s=" + domain
     #print("getMBFCUrl : ",query_URL)
-    page = requests.get(query_URL)
+    page = requests.get(query_URL, timeout=TIMEOUT)
     soup = BeautifulSoup(page.content, "html5lib")
 
     a_entries = soup.find_all('a', class_="button", href=True)
@@ -188,51 +192,76 @@ def returnResult(site_label, displayPrompt = False):
         if displayPrompt == True:
             tk.messagebox.showinfo("Result \t\t\t", "HIGH CREDIBILITY!!! Source")
         return "HIGH_CREDIBILITY"
+    elif site_label == DARK_WEB:
+        if displayPrompt == True:
+            tk.messagebox.showinfo("Result \t\t\t", "DARK_WEB!!! Source")
+        return "DARK_WEB"
 
 def reExecuteUsingTitle(domain):
     domain = "https://" + domain
     if verbose:
         print("Re-executing for : ", domain)
     # making requests instance
-    reqs = requests.get(domain)
-    # using the BeautifulSoup module
-    soup = BeautifulSoup(reqs.text, 'html.parser')
-    # displaying the title
-    for title in soup.find_all('title'):
-        title_text = title.get_text()
-        res = re.split('\(|\||\.|\:|\-', title_text)[0]
-        res = res.strip() #Contains the stripped title
-        res = res.replace(" ", "+")
+    try:
+        reqs = requests.get(domain, timeout=TIMEOUT)
         if verbose:
-            print("Title of the website is : ", res)
-        #Get the mbfc webpage by searching the title
-        mbfc_url = getMBFCUrl(res)
-        if verbose:
-            print("mbfc_url : ", mbfc_url)
-        return getSiteLabel(mbfc_url, domain)
+            print("Get Request Response : ", reqs)
+        # using the BeautifulSoup module
+        soup = BeautifulSoup(reqs.text, 'html.parser')
+        # displaying the title
+        for title in soup.find_all('title'):
+            title_text = title.get_text()
+            res = re.split('\(|\||\.|\:|\-', title_text)[0]
+            res = res.strip() #Contains the stripped title
+            res = res.replace(" ", "+")
+            if verbose:
+                print("Title of the website is : ", res)
+            #Get the mbfc webpage by searching the title
+            mbfc_url = getMBFCUrl(res)
+            if verbose:
+                print("mbfc_url : ", mbfc_url)
+            return getSiteLabel(mbfc_url, domain)
+    except Exception as e:
+        if verbose == True:
+            print("Exception caught during re-execution : ", e)
+        raise e
 
 def getCredibility(base_url, displayPrompt = False):
-    if verbose == True:
-        print("Base URL : ", base_url)
+    site_label = UNDEFINED
+    try:
+        if verbose == True:
+            print("Base URL : ", base_url)
 
-    domain = urlparse(base_url).netloc
-    if verbose == True:
-        print("Domain : ",domain)
-    server = domain.split('.')[-1]
-    if verbose == True:
-        print("Server : ", server)
-    if server == "onion":
-        if displayPrompt == True :
-            tk.messagebox.showinfo("Result \t\t\t", "Dark Net Site")
-        return "DARK_WEB"
+        domain = urlparse(base_url).netloc
+        if verbose == True:
+            print("Domain : ",domain)
+        server = domain.split('.')[-1]
+        if verbose == True:
+            print("Server : ", server)
+        if server == "onion":
+            if displayPrompt == True :
+                tk.messagebox.showinfo("Result \t\t\t", "Dark Net Site")
+            site_label = DARK_WEB
 
-    site_label = execute(domain)
-    ##Sometimes MBFC search fails and points to misleading news source (like who.int).
-    ##This is where, the source comparison fails. Thus, as a fail safe we first retrive the webpage title
-    ##from the original domain then use the title to search MBFC to get the correct MBFC webpage.
-    if site_label == UNDEFINED:
-        site_label = reExecuteUsingTitle(domain)
+        if site_label == UNDEFINED:
+            site_label = execute(domain)
+        ##Sometimes MBFC search fails and points to misleading news source (like who.int).
+        ##This is where, the source comparison fails. Thus, as a fail safe we first retrive the webpage title
+        ##from the original domain then use the title to search MBFC to get the correct MBFC webpage.
+        if site_label == UNDEFINED:
+            site_label = reExecuteUsingTitle(domain)
+    except Exception as e:
+        if verbose == True:
+            print("Exception caught : ", e)
 
-    return returnResult(site_label, displayPrompt)
+    finally:
+        ##Now if it is still UNDEFINED then MBFC does not contain the information.
+        ##Thus, falling back to propabilistic logic.
+        ##NOTE: For now we just use a list of domains
+        if site_label == UNDEFINED:
+            if verbose == True:
+                print("Running custom classifier")
+            site_label = runCustomCredilibityClassifier(domain, verbose)
+        return returnResult(site_label, displayPrompt)
 
 
